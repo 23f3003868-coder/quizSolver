@@ -65,7 +65,7 @@ async def solve(request: Request):
     logger.info("Returning accepted response")
     return JSONResponse({"status": "accepted"})
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/demo", response_class=HTMLResponse)
 async def demo_quiz_page():
     """
     Demo quiz page that demonstrates the type of quiz the solver should handle.
