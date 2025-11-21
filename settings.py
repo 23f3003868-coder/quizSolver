@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 QUIZ_SECRET = os.getenv("QUIZ_SECRET", "")
 QUIZ_EMAIL = os.getenv("QUIZ_EMAIL", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "huggingface/unsloth/mistral-nemo-instruct-2407")  # Alternative free model
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-2-9b-it:free")  # Alternative free model with better availability
 
 # Safety: assert presence in runtime, but don't crash on import
 def validate_settings():
