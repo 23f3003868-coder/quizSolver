@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 QUIZ_SECRET = os.getenv("QUIZ_SECRET", "")
 QUIZ_EMAIL = os.getenv("QUIZ_EMAIL", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-chat-v3-0324:free")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "huggingface/unsloth/mistral-nemo-instruct-2407")  # Alternative free model
 
 # Safety: assert presence in runtime, but don't crash on import
 def validate_settings():
