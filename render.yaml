@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: tds-llm-quiz-solver
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m playwright install --with-deps chromium
+    startCommand: |
+      uvicorn main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: QUIZ_SECRET
+        sync: false
+      - key: QUIZ_EMAIL
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false

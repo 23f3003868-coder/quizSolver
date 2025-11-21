@@ -1,0 +1,61 @@
+# planner.py
+import json
+import logging
+from openrouter_client import call_llm
+
+logger = logging.getLogger(__name__)
+
+PLANNER_SYSTEM_PROMPT = """
+You are a planning assistant for solving data quizzes.
+
+You receive the FULL TEXT of a quiz webpage.
+
+Your job is to output a STRICT JSON object with these fields:
+
+{
+  "question_summary": "short description of what is being asked",
+  "submit_url": "https://...",                     // where to POST the final answer
+  "answer_type": "number|string|boolean|json|file",
+  "file_urls": ["https://...", "..."],             // any CSV, Excel, PDF, data URLs in the page (if any)
+  "answer_json_template": {                        // JSON payload structure to send to submit_url,
+    "email": "",                                   // from page instructions
+    "secret": "",
+    "url": "",
+    "answer": null                                 // placeholder
+  }
+}
+
+Rules:
+- If the page shows a JSON payload schema, replicate it in answer_json_template, but leave the answer value as null.
+- Do NOT include comments or extra fields.
+- Output only valid JSON, no explanation text.
+"""
+
+async def plan_from_page_text(page_text: str) -> dict:
+    logger.info(f"Planning from page text of length {len(page_text)}")
+    logger.debug(f"Page text preview: {page_text[:200]}...")
+
+    user_prompt = (
+        "Here is the full text content of the quiz page:\n\n"
+        f"{page_text}\n\n"
+        "Extract the JSON plan as specified."
+    )
+
+    try:
+        logger.info("Calling LLM for planning")
+        raw = await call_llm(PLANNER_SYSTEM_PROMPT, user_prompt)
+        logger.info(f"LLM returned raw response of length {len(raw)}")
+
+        logger.debug(f"Raw LLM response: {raw}")
+
+        plan = json.loads(raw)
+        logger.info(f"Successfully parsed plan: {plan.get('question_summary', 'N/A')[:50]}...")
+
+        return plan
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON response from LLM: {e}")
+        logger.error(f"Raw response was: {raw}")
+        raise
+    except Exception as e:
+        logger.error(f"Error in planning from page text: {e}", exc_info=True)
+        raise
