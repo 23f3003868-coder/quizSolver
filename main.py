@@ -279,6 +279,7 @@ async def submit_quiz(request: Request):
         submitted_answer = payload.get("answer")
         if submitted_answer == correct_answer or (isinstance(submitted_answer, (int, float)) and abs(submitted_answer - correct_answer) < 0.01):
             # Correct answer
+            logger.info(f"Correct answer submitted: {submitted_answer}")
             response = {
                 "correct": True,
                 "reason": "Great job! That's the correct average.",
@@ -286,6 +287,7 @@ async def submit_quiz(request: Request):
             }
         else:
             # Incorrect answer
+            logger.info(f"Incorrect answer submitted: {submitted_answer}, expected: {correct_answer}")
             response = {
                 "correct": False,
                 "reason": f"Incorrect answer. Expected {correct_answer}, got {submitted_answer}"
@@ -296,3 +298,21 @@ async def submit_quiz(request: Request):
     except Exception as e:
         logger.error(f"Error processing quiz submission: {e}")
         raise HTTPException(status_code=400, detail="Invalid submission data")
+
+@app.get("/test")
+async def test_endpoint():
+    """
+    Test endpoint to verify LLM functionality
+    """
+    from openrouter_client import call_llm
+    from planner import PLANNER_SYSTEM_PROMPT
+
+    test_text = "Q834. Download file. What is the sum of the 'value' column in the table on page 2?"
+    try:
+        # Test the planner system
+        result = await call_llm(PLANNER_SYSTEM_PROMPT, test_text)
+        logger.info(f"LLM planner test result: {result[:100]}...")
+        return JSONResponse({"status": "success", "llm_response_preview": result[:100]})
+    except Exception as e:
+        logger.error(f"LLM test failed: {e}")
+        return JSONResponse({"status": "error", "message": str(e)})
