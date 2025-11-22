@@ -97,14 +97,14 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
         if hasattr(obj, "head"):  # assume DataFrame-like
             cols = list(obj.columns)
             logger.info(f"  {url}: DataFrame shape={obj.shape}, columns={cols}")
-            lines.append(f"{url}: DataFrame shape={obj.shape}, columns={cols}")
+            lines.append(f"{url} (key in data dict): DataFrame shape={obj.shape}, columns={cols}")
         elif isinstance(obj, dict) and "texts" in obj and "tables" in obj:
             num_pages = len(obj["texts"])
             logger.info(f"  {url}: PDF with {num_pages} pages")
-            lines.append(f"{url}: PDF with {num_pages} pages")
+            lines.append(f"{url} (key in data dict): PDF with {num_pages} pages")
         else:
             logger.info(f"  {url}: Unrecognized object of type {type(obj)}")
-            lines.append(f"{url}: Unrecognized object of type {type(obj)}")
+            lines.append(f"{url} (key in data dict): Unrecognized object of type {type(obj)}")
     result = "\n".join(lines)
     logger.debug(f"Data description: {result}")
     return result
