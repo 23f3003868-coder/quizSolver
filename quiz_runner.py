@@ -118,6 +118,35 @@ def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
     logger.info("Executing solver code")
     logger.debug(f"Code to execute: {code[:200]}...")
 
+    # Create a wrapper for data access to handle common file-based key references
+    class DataWrapper:
+        def __init__(self, original_data):
+            self.original_data = original_data
+            # Add convenience properties for common file names
+            for url, dt in original_data.items():
+                file_name = url.split('/')[-1]  # Get filename from URL
+                setattr(self, file_name.replace('.', '_'), dt)  # data_csv instead of data.csv
+
+        def __getitem__(self, key):
+            # First try the exact key
+            if key in self.original_data:
+                return self.original_data[key]
+            # If not found, try to map common short names to full URLs
+            for url, dt in self.original_data.items():
+                if url.endswith(key) or url.split('/')[-1] == key:
+                    return dt
+            # If still not found, raise KeyError
+            raise KeyError(key)
+
+        def __contains__(self, key):
+            return key in self.original_data
+
+        def keys(self):
+            return self.original_data.keys()
+
+        def get(self, key, default=None):
+            return self.original_data.get(key, default)
+
     # Restricted globals
     global_env = {
         "__builtins__": __builtins__,  # for assignment okay, but note security tradeoff in viva
@@ -132,14 +161,23 @@ def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
             logger.error("No solve(data, page_text) function found in generated code")
             raise RuntimeError("No solve(data, page_text) function found")
 
+        # Pass the wrapped data to handle various access patterns
+        wrapped_data = DataWrapper(data)
         logger.info("Calling solve function with provided data")
-        result = solve_fn(data, page_text)
+        result = solve_fn(wrapped_data, page_text)
         logger.info(f"Solver function returned result: {result}")
         return result
     except Exception as e:
-        logger.error(f"Error executing solver code: {e}")
-        logger.debug(f"Error executing code: {code}", exc_info=True)
-        raise
+        logger.error(f"Error executing solver code with wrapped data: {e}")
+        # Fallback to original data access if wrapper fails
+        logger.debug("Falling back to original data access")
+        try:
+            result = solve_fn(data, page_text)
+            logger.info(f"Fallback execution returned result: {result}")
+            return result
+        except Exception as fallback_e:
+            logger.error(f"Fallback execution also failed: {fallback_e}")
+            raise e  # Re-raise the original error
 
 
 async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) -> dict:
