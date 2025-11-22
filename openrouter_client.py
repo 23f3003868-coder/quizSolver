@@ -9,8 +9,9 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 HEADERS = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
     # Optional but recommended by OpenRouter:
-    "HTTP-Referer": "https://your-render-service-url",  # replace at deploy time
+    "HTTP-Referer": "https://quizsolver-0cy6.onrender.com",  # using your service URL
     "X-Title": "TDS LLM Quiz Solver",
 }
 
