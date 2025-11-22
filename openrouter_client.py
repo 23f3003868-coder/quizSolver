@@ -39,11 +39,22 @@ async def call_llm(system_prompt: str, user_prompt: str, *, temperature: float =
             resp.raise_for_status()
             data = resp.json()
 
-            response_content = data["choices"][0]["message"]["content"]
-            logger.info(f"Received response from LLM, content length: {len(response_content)}")
-            logger.debug(f"Response preview: {response_content[:100]}...")
+            # Check if the response contains an error
+            if "error" in data:
+                error_msg = data["error"].get("message", "Unknown error from OpenRouter API")
+                logger.error(f"OpenRouter API returned error: {error_msg}")
+                raise Exception(f"OpenRouter API error: {error_msg}")
 
-            return response_content
+            # Extract the content from the response
+            if "choices" in data and len(data["choices"]) > 0:
+                response_content = data["choices"][0]["message"]["content"]
+                logger.info(f"Received response from LLM, content length: {len(response_content)}")
+                logger.debug(f"Response preview: {response_content[:100]}...")
+
+                return response_content
+            else:
+                logger.error(f"No choices found in response. Response: {data}")
+                raise Exception("Invalid response format from OpenRouter API - no choices available")
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error from OpenRouter API: {e.response.status_code} - {e}")
         logger.error(f"Response content: {e.response.text}")
