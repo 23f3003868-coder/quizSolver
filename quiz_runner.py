@@ -58,15 +58,30 @@ Quiz page text:
 Data description:
 {data_descr}
 
-Produce JSON with 'explanation' and 'code' fields as specified.
+Produce JSON with 'explanation' and 'code' fields as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON.
 """
     try:
         raw = await call_llm(PYTHON_SOLVER_SYSTEM, user_prompt)
-        obj = json.loads(raw)
+
+        # Clean up the response to extract JSON if it contains markdown formatting
+        cleaned_response = raw.strip()
+
+        # Check if the response is wrapped in markdown code blocks
+        if cleaned_response.startswith("```"):
+            import re
+            match = re.search(r'```(?:json)?\s*\n?(.*?)(?:\n?)```', cleaned_response, re.DOTALL)
+            if match:
+                cleaned_response = match.group(1).strip()
+            else:
+                logger.warning("Found markdown block in solver code response but couldn't extract JSON properly")
+
+        obj = json.loads(cleaned_response)
         logger.info("Successfully generated solver code")
         return obj["code"]
     except Exception as e:
         logger.error(f"Error generating solver code: {e}")
+        logger.debug(f"Raw solver code response: {raw}")
+        logger.debug(f"Cleaned solver code response: {cleaned_response}")
         raise
 
 
