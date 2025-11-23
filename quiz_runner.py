@@ -33,9 +33,9 @@ You must output ONLY a JSON object:
 
 Rules:
 - The function `solve(page_url)` receives the original quiz page URL to help with relative link resolution.
-- You can import and use pandas, requests, numpy, and other standard libraries as needed.
+- You can import and use pandas, httpx, numpy, and other standard libraries as needed.
 - You can make HTTP requests to download data files as needed.
-- Use pandas.read_csv(), requests.get(), etc. to download and process data.
+- Use pandas.read_csv(), httpx.get() (preferred) or requests.get() to download and process data.
 - Do not print or use any input/output functions like print(), input().
 - Return the final `answer` in a type consistent with the question (number/string/boolean/json-serializable).
 - Code MUST be valid Python 3.
@@ -142,7 +142,8 @@ def run_solver_code(code: str, original_url: str) -> Any:
         "__builtins__": __builtins__,
         "pd": pd,
         "np": np,
-        # Allow standard library modules that are needed
+        # Allow network and data processing libraries that are needed
+        "httpx": __import__("httpx"),
         "requests": __import__("requests"),
         "urllib": __import__("urllib", fromlist=['']),
         "urllib.request": __import__("urllib.request", fromlist=['']),
