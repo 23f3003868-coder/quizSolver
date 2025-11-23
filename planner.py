@@ -60,6 +60,7 @@ async def plan_from_page_text(page_text: str, original_url: str = None) -> dict:
             "Extract the JSON plan as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON."
         )
 
+    raw = None
     try:
         logger.info("Calling LLM for planning")
         raw = await call_llm(PLANNER_SYSTEM_PROMPT, user_prompt)
@@ -102,8 +103,8 @@ async def plan_from_page_text(page_text: str, original_url: str = None) -> dict:
         return plan
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON response from LLM: {e}")
-        logger.error(f"Raw response was: {raw}")
-        logger.error(f"Cleaned response was: {cleaned_response}")
+        logger.error(f"Raw response was: {raw if 'raw' in locals() else 'N/A'}")
+        logger.error(f"Cleaned response was: {cleaned_response if 'cleaned_response' in locals() else 'N/A'}")
         logger.error(f"Final JSON string attempted: {final_json_str if 'final_json_str' in locals() else 'N/A'}")
         raise
     except Exception as e:

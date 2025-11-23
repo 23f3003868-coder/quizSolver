@@ -61,6 +61,7 @@ Data description:
 
 Produce JSON with 'explanation' and 'code' fields as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON.
 """
+    raw = None
     try:
         raw = await call_llm(PYTHON_SOLVER_SYSTEM, user_prompt)
 
@@ -103,14 +104,14 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         return code
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON response from LLM: {e}")
-        logger.error(f"Raw solver code response: {raw}")
-        logger.error(f"Cleaned solver code response: {cleaned_response}")
+        logger.error(f"Raw solver code response: {raw if 'raw' in locals() else 'N/A'}")
+        logger.error(f"Cleaned solver code response: {cleaned_response if 'cleaned_response' in locals() else 'N/A'}")
         logger.error(f"Final JSON string attempted: {final_json_str if 'final_json_str' in locals() else 'N/A'}")
         raise
     except Exception as e:
         logger.error(f"Error generating solver code: {e}")
-        logger.debug(f"Raw solver code response: {raw}")
-        logger.debug(f"Cleaned solver code response: {cleaned_response}")
+        logger.debug(f"Raw solver code response: {raw if 'raw' in locals() else 'N/A'}")
+        logger.debug(f"Cleaned solver code response: {cleaned_response if 'cleaned_response' in locals() else 'N/A'}")
         raise
 
 
