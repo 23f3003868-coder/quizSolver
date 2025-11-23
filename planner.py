@@ -55,6 +55,9 @@ async def plan_from_page_text(page_text: str) -> dict:
         if cleaned_response.startswith("<s>"):
             # Remove common token prefixes from models
             cleaned_response = cleaned_response.split("[OUT]", 1)[-1].strip()
+            # Sometimes there are trailing tags like [/OUT] that need to be removed
+            if "[/OUT]" in cleaned_response:
+                cleaned_response = cleaned_response.split("[/OUT]")[0].strip()
         elif cleaned_response.startswith("```"):
             # Find the first occurrence of ``` and extract content between it and the next ```
             import re
@@ -65,7 +68,16 @@ async def plan_from_page_text(page_text: str) -> dict:
                 # If there's a code block but couldn't extract it properly, log and try to parse as is
                 logger.warning("Found markdown block but couldn't extract JSON properly")
 
-        plan = json.loads(cleaned_response)
+        # Try to extract JSON from the cleaned response using regex to handle any remaining formatting
+        import re
+        json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+        if json_match:
+            final_json_str = json_match.group(0).strip()
+        else:
+            # If no JSON object found, try the cleaned_response as is
+            final_json_str = cleaned_response
+
+        plan = json.loads(final_json_str)
         logger.info(f"Successfully parsed plan: {plan.get('question_summary', 'N/A')[:50]}...")
 
         return plan
@@ -73,6 +85,7 @@ async def plan_from_page_text(page_text: str) -> dict:
         logger.error(f"Error decoding JSON response from LLM: {e}")
         logger.error(f"Raw response was: {raw}")
         logger.error(f"Cleaned response was: {cleaned_response}")
+        logger.error(f"Final JSON string attempted: {final_json_str if 'final_json_str' in locals() else 'N/A'}")
         raise
     except Exception as e:
         logger.error(f"Error in planning from page text: {e}", exc_info=True)

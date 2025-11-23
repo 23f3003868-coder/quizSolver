@@ -70,6 +70,9 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         if cleaned_response.startswith("<s>"):
             # Remove common token prefixes from models
             cleaned_response = cleaned_response.split("[OUT]", 1)[-1].strip()
+            # Sometimes there are trailing tags like [/OUT] that need to be removed
+            if "[/OUT]" in cleaned_response:
+                cleaned_response = cleaned_response.split("[/OUT]")[0].strip()
         elif cleaned_response.startswith("```"):
             import re
             match = re.search(r'```(?:json)?\s*\n?(.*?)(?:\n?)```', cleaned_response, re.DOTALL)
@@ -78,9 +81,24 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
             else:
                 logger.warning("Found markdown block in solver code response but couldn't extract JSON properly")
 
-        obj = json.loads(cleaned_response)
+        # Try to extract JSON from the cleaned response using regex to handle any remaining formatting
+        import re
+        json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+        if json_match:
+            final_json_str = json_match.group(0).strip()
+        else:
+            # If no JSON object found, try the cleaned_response as is
+            final_json_str = cleaned_response
+
+        obj = json.loads(final_json_str)
         logger.info("Successfully generated solver code")
         return obj["code"]
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON response from LLM: {e}")
+        logger.error(f"Raw solver code response: {raw}")
+        logger.error(f"Cleaned solver code response: {cleaned_response}")
+        logger.error(f"Final JSON string attempted: {final_json_str if 'final_json_str' in locals() else 'N/A'}")
+        raise
     except Exception as e:
         logger.error(f"Error generating solver code: {e}")
         logger.debug(f"Raw solver code response: {raw}")
