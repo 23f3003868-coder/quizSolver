@@ -66,8 +66,11 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         # Clean up the response to extract JSON if it contains markdown formatting
         cleaned_response = raw.strip()
 
-        # Check if the response is wrapped in markdown code blocks
-        if cleaned_response.startswith("```"):
+        # Handle model-specific token prefixes (e.g., <s> [OUT] from Mistral models)
+        if cleaned_response.startswith("<s>"):
+            # Remove common token prefixes from models
+            cleaned_response = cleaned_response.split("[OUT]", 1)[-1].strip()
+        elif cleaned_response.startswith("```"):
             import re
             match = re.search(r'```(?:json)?\s*\n?(.*?)(?:\n?)```', cleaned_response, re.DOTALL)
             if match:
