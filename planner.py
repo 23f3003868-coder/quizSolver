@@ -26,20 +26,39 @@ Your job is to output a STRICT JSON object with these fields:
 }
 
 Rules:
+- If you see relative URLs like "/data/file.csv", resolve them to absolute URLs based on the page's URL
+- If the page URL is "https://example.com/quiz" and there's a relative link "/data/file.csv", the absolute URL is "https://example.com/data/file.csv"
 - If the page shows a JSON payload schema, replicate it in answer_json_template, but leave the answer value as null.
 - Do NOT include comments or extra fields.
 - Output only valid JSON, no explanation text.
 """
 
-async def plan_from_page_text(page_text: str) -> dict:
-    logger.info(f"Planning from page text of length {len(page_text)}")
+async def plan_from_page_text(page_text: str, original_url: str = None) -> dict:
+    logger.info(f"Planning from page text of length {len(page_text)}, original URL: {original_url}")
     logger.debug(f"Page text preview: {page_text[:200]}...")
 
-    user_prompt = (
-        "Here is the full text content of the quiz page:\n\n"
-        f"{page_text}\n\n"
-        "Extract the JSON plan as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON."
-    )
+    # Build the user prompt with URL context if available
+    if original_url:
+        # Extract the base URL (origin) from the original URL to help with relative URL resolution
+        from urllib.parse import urljoin
+        base_url = urljoin(original_url, "/")  # Get the origin part of the URL
+        user_prompt = (
+            f"Quiz page URL: {original_url}\n\n"
+            f"Base URL: {base_url}\n\n"
+            "Here is the full text content of the quiz page:\n\n"
+            f"{page_text}\n\n"
+            f'Important: If the page contains relative URLs like "/data/file.csv", you must convert them to absolute URLs using the base URL ({base_url}).\n'
+            f'For example, "/data/file.csv" should become "{base_url}data/file.csv".\n'
+            'Do not return placeholder URLs like "https://..." - return the actual resolved URLs.\n\n'
+            "Extract the JSON plan as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON."
+        )
+    else:
+        user_prompt = (
+            "Here is the full text content of the quiz page:\n\n"
+            f"{page_text}\n\n"
+            "Important: If the page contains relative URLs like \"/data/file.csv\", you must convert them to absolute URLs based on the quiz URL that was provided (you won't see the original URL here, but relative links are relative to the origin domain of the quiz page). Do not return placeholder URLs like \"https://...\" - return the actual resolved URLs.\n\n"
+            "Extract the JSON plan as specified. Do not include any markdown formatting, code blocks, or extra text - only return valid JSON."
+        )
 
     try:
         logger.info("Calling LLM for planning")

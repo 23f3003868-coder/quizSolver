@@ -39,9 +39,10 @@ Rules:
     * PDF      → dict with 'texts' (list[str]) and 'tables' (nested lists)
   - page_text: full text of the quiz page.
 - Use only numpy and pandas operations; they are already imported as `import numpy as np` and `import pandas as pd`.
+- Do not import or use requests, urllib, or any network modules; data is already loaded.
 - No external network calls.
+- Do not print or use any input/output functions like print(), input().
 - Return the final `answer` in a type consistent with the question (number/string/boolean/json-serializable).
-- Do not print anything.
 - Code MUST be valid Python 3.
 """
 
@@ -223,7 +224,7 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     # Plan the solution
     logger.info("Planning solution from page text")
     try:
-        plan = await plan_from_page_text(page_text)
+        plan = await plan_from_page_text(page_text, url)
         logger.info(f"Successfully created plan: {plan.get('question_summary', 'N/A')[:50]}...")
     except Exception as e:
         logger.error(f"Error planning from page text: {e}")
