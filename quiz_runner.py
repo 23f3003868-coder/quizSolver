@@ -23,24 +23,19 @@ You are a Python data analysis assistant.
 You will be given:
 - A description of the question
 - The full text of the quiz page
-- A description of loaded data files
 
 You must output ONLY a JSON object:
 
 {
   "explanation": "short natural language explanation of what you will do",
-  "code": "def solve(data, page_text):\\n    ...\\n    return answer"
+  "code": "def solve(page_url):\\n    ...\\n    return answer"
 }
 
 Rules:
-- The function `solve(data, page_text)` receives:
-  - data: dict from URL string to python object:
-    * CSV/Excel → pandas.DataFrame
-    * PDF      → dict with 'texts' (list[str]) and 'tables' (nested lists)
-  - page_text: full text of the quiz page.
-- Use only numpy and pandas operations; they are already imported as `import numpy as np` and `import pandas as pd`.
-- Do not import or use requests, urllib, or any network modules; data is already loaded.
-- No external network calls.
+- The function `solve(page_url)` receives the original quiz page URL to help with relative link resolution.
+- You can import and use pandas, requests, numpy, and other standard libraries as needed.
+- You can make HTTP requests to download data files as needed.
+- Use pandas.read_csv(), requests.get(), etc. to download and process data.
 - Do not print or use any input/output functions like print(), input().
 - Return the final `answer` in a type consistent with the question (number/string/boolean/json-serializable).
 - Code MUST be valid Python 3.
@@ -94,12 +89,7 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         obj = json.loads(final_json_str)
         code = obj["code"]
 
-        # Validate the generated code doesn't contain restricted imports
-        if 'import requests' in code or 'import urllib' in code or '.get(' in code or '.post(' in code:
-            logger.error(f"Generated code contains restricted network operations: {code}")
-            raise ValueError("Generated code contains restricted network operations")
-
-        logger.info("Successfully generated and validated solver code")
+        logger.info("Successfully generated solver code")
         return code
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON response from LLM: {e}")
@@ -139,74 +129,42 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     return result
 
 
-def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
+def run_solver_code(code: str, original_url: str) -> Any:
     """
-    Execute the LLM-generated code defining solve(data, page_text)
+    Execute the LLM-generated code defining solve(page_url)
     and return the answer.
     """
     logger.info("Executing solver code")
     logger.debug(f"Code to execute: {code[:200]}...")
 
-    # Create a wrapper for data access to handle common file-based key references
-    class DataWrapper:
-        def __init__(self, original_data):
-            self.original_data = original_data
-            # Add convenience properties for common file names
-            for url, dt in original_data.items():
-                file_name = url.split('/')[-1]  # Get filename from URL
-                setattr(self, file_name.replace('.', '_'), dt)  # data_csv instead of data.csv
-
-        def __getitem__(self, key):
-            # First try the exact key
-            if key in self.original_data:
-                return self.original_data[key]
-            # If not found, try to map common short names to full URLs
-            for url, dt in self.original_data.items():
-                if url.endswith(key) or url.split('/')[-1] == key:
-                    return dt
-            # If still not found, raise KeyError
-            raise KeyError(key)
-
-        def __contains__(self, key):
-            return key in self.original_data
-
-        def keys(self):
-            return self.original_data.keys()
-
-        def get(self, key, default=None):
-            return self.original_data.get(key, default)
-
-    # Restricted globals
+    # Extended globals to allow network operations
     global_env = {
-        "__builtins__": __builtins__,  # for assignment okay, but note security tradeoff in viva
+        "__builtins__": __builtins__,
         "pd": pd,
         "np": np,
+        # Allow standard library modules that are needed
+        "requests": __import__("requests"),
+        "urllib": __import__("urllib", fromlist=['']),
+        "urllib.request": __import__("urllib.request", fromlist=['']),
+        "io": __import__("io"),
+        "csv": __import__("csv"),
+        "json": __import__("json"),
     }
     local_env: dict = {}
     try:
         exec(code, global_env, local_env)
         solve_fn = local_env.get("solve")
         if not isinstance(solve_fn, types.FunctionType):
-            logger.error("No solve(data, page_text) function found in generated code")
-            raise RuntimeError("No solve(data, page_text) function found")
+            logger.error("No solve(page_url) function found in generated code")
+            raise RuntimeError("No solve(page_url) function found")
 
-        # Pass the wrapped data to handle various access patterns
-        wrapped_data = DataWrapper(data)
-        logger.info("Calling solve function with provided data")
-        result = solve_fn(wrapped_data, page_text)
+        logger.info("Calling solve function with page URL")
+        result = solve_fn(original_url)
         logger.info(f"Solver function returned result: {result}")
         return result
     except Exception as e:
-        logger.error(f"Error executing solver code with wrapped data: {e}")
-        # Fallback to original data access if wrapper fails
-        logger.debug("Falling back to original data access")
-        try:
-            result = solve_fn(data, page_text)
-            logger.info(f"Fallback execution returned result: {result}")
-            return result
-        except Exception as fallback_e:
-            logger.error(f"Fallback execution also failed: {fallback_e}")
-            raise e  # Re-raise the original error
+        logger.error(f"Error executing solver code: {e}")
+        raise
 
 
 async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) -> dict:
@@ -266,7 +224,7 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     try:
         solver_code = await make_solver_code(plan.get("question_summary", ""), page_text, data_descr)
         logger.info("Running solver code")
-        answer = run_solver_code(solver_code, data, page_text)
+        answer = run_solver_code(solver_code, url)  # Pass the original URL instead of data and page_text
         logger.info(f"Successfully computed answer: {answer}")
     except Exception as e:
         logger.error(f"Error generating or running solver code: {e}")
