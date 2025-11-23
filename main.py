@@ -75,7 +75,7 @@ async def demo_quiz_page():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Quiz Solver Demo</title>
+        <title>Advanced Quiz Solver Demo</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -150,36 +150,89 @@ async def demo_quiz_page():
                 border: 1px solid #ddd;
                 border-radius: 4px;
             }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 15px 0;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>Quiz Solver Test Page</h1>
+            <h1>Advanced Quiz Solver Test Page</h1>
 
             <div class="instructions">
                 <h3>Quiz Instructions</h3>
-                <p>This is a demo quiz page to test your quiz solver. Your solver should:</p>
-                <ol>
-                    <li>Read the question below</li>
-                    <li>Download and analyze any provided data files</li>
-                    <li>Calculate the correct answer</li>
-                    <li>Submit the answer to this page's submit endpoint</li>
-                </ol>
+                <p>This is an advanced demo quiz page to test your quiz solver capabilities. Your solver should handle various data analysis tasks:</p>
+                <ul>
+                    <li>Sourcing data from multiple formats (CSV, potentially PDF)</li>
+                    <li>Processing and cleansing text/data</li>
+                    <li>Performing analysis by filtering, sorting, aggregating</li>
+                    <li>Applying statistical models (averages, sums, counts)</li>
+                </ul>
             </div>
 
             <div class="question">
-                <h3>Quiz Question #1</h3>
+                <h3>Quiz Question #1: Basic Aggregation</h3>
                 <div class="quiz-content">
                     <p>Download the <a href="/data/quiz-data.csv" id="data-link">CSV data file</a> and calculate the average of the "value" column.</p>
                     <p>What is the average of the "value" column in the CSV file?</p>
+                    <p>Data preview:</p>
+                    <table>
+                        <tr><th>name</th><th>value</th><th>category</th></tr>
+                        <tr><td>John</td><td>10</td><td>A</td></tr>
+                        <tr><td>Jane</td><td>20</td><td>B</td></tr>
+                        <tr><td>Bob</td><td>30</td><td>A</td></tr>
+                        <tr><td>Alice</td><td>40</td><td>B</td></tr>
+                        <tr><td>Charlie</td><td>50</td><td>A</td></tr>
+                    </table>
                 </div>
 
                 <div>
-                    <label for="answer">Your Answer:</label>
-                    <input type="text" id="answer" class="answer-input" placeholder="Enter your calculated answer">
+                    <label for="answer1">Your Answer:</label>
+                    <input type="text" id="answer1" class="answer-input" placeholder="Enter your calculated answer">
                     <div>
-                        <button onclick="submitAnswer()">Submit Answer</button>
-                        <button onclick="skipQuiz()">Skip to Next Quiz</button>
+                        <button onclick="submitAnswer(1)">Submit Answer</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>Quiz Question #2: Complex Analysis</h3>
+                <div class="quiz-content">
+                    <p>From the same CSV file, calculate the sum of values for category 'A' only.</p>
+                    <p>What is the sum of 'value' column where 'category' is 'A'?</p>
+                </div>
+
+                <div>
+                    <label for="answer2">Your Answer:</label>
+                    <input type="text" id="answer2" class="answer-input" placeholder="Enter your calculated answer">
+                    <div>
+                        <button onclick="submitAnswer(2)">Submit Answer</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="question">
+                <h3>Quiz Question #3: Statistical Analysis</h3>
+                <div class="quiz-content">
+                    <p>From the same CSV file, find the person with the highest value in category 'B'.</p>
+                    <p>Return the name of the person with the highest value in category 'B'.</p>
+                </div>
+
+                <div>
+                    <label for="answer3">Your Answer:</label>
+                    <input type="text" id="answer3" class="answer-input" placeholder="Enter the name">
+                    <div>
+                        <button onclick="submitAnswer(3)">Submit Answer</button>
                     </div>
                 </div>
             </div>
@@ -189,8 +242,16 @@ async def demo_quiz_page():
 
         <script>
             // Function to submit answer
-            function submitAnswer() {
-                const answer = document.getElementById('answer').value;
+            function submitAnswer(questionNumber) {
+                let answer;
+                if (questionNumber === 1) {
+                    answer = document.getElementById('answer1').value;
+                } else if (questionNumber === 2) {
+                    answer = document.getElementById('answer2').value;
+                } else if (questionNumber === 3) {
+                    answer = document.getElementById('answer3').value;
+                }
+
                 if (!answer) {
                     showResponse('Please enter an answer', 'error');
                     return;
@@ -201,7 +262,7 @@ async def demo_quiz_page():
                     email: "23f3003868@ds.study.iitm.ac.in",
                     secret: "495669",
                     url: window.location.href,
-                    answer: parseFloat(answer) || answer
+                    answer: questionNumber === 1 || questionNumber === 2 ? parseFloat(answer) || answer : answer
                 };
 
                 fetch('/submit', {
@@ -214,12 +275,7 @@ async def demo_quiz_page():
                 .then(response => response.json())
                 .then(data => {
                     if (data.correct) {
-                        showResponse(`Correct! ${data.reason || 'Moving to next quiz...'}`, 'success');
-                        if (data.url) {
-                            setTimeout(() => {
-                                window.location.href = data.url;
-                            }, 2000);
-                        }
+                        showResponse(`Correct! ${data.reason || 'Well done!'}`, 'success');
                     } else {
                         showResponse(`Incorrect: ${data.reason || 'Please try again.'}`, 'error');
                     }
@@ -227,15 +283,6 @@ async def demo_quiz_page():
                 .catch(error => {
                     showResponse(`Error submitting answer: ${error.message}`, 'error');
                 });
-            }
-
-            // Function to skip to next quiz
-            function skipQuiz() {
-                // In a real scenario, you might have logic to get the next quiz URL
-                showResponse('Skipping to next quiz...', 'success');
-                setTimeout(() => {
-                    window.location.href = '/next'; // Placeholder
-                }, 1000);
             }
 
             // Function to show response
@@ -273,24 +320,64 @@ async def submit_quiz(request: Request):
         payload = await request.json()
         logger.info(f"Received quiz submission: {payload}")
 
-        # For the demo, the correct answer is the average of [10, 20, 30, 40, 50] = 30
-        correct_answer = 30
+        # Load CSV data to validate various possible answers
+        import io
+        import pandas as pd
+
+        # CSV content (same as in /data/quiz-data.csv)
+        csv_content = """name,value,category
+John,10,A
+Jane,20,B
+Bob,30,A
+Alice,40,B
+Charlie,50,A"""
+
+        df = pd.read_csv(io.StringIO(csv_content))
 
         submitted_answer = payload.get("answer")
-        if submitted_answer == correct_answer or (isinstance(submitted_answer, (int, float)) and abs(submitted_answer - correct_answer) < 0.01):
-            # Correct answer
-            logger.info(f"Correct answer submitted: {submitted_answer}")
+
+        # Determine what the question might be asking based on common patterns
+        # Question 1: Average of 'value' column - should be 30
+        avg_value = df['value'].mean()
+        # Question 2: Sum of values where category is 'A' - should be 10+30+50 = 90
+        sum_category_a = df[df['category'] == 'A']['value'].sum()
+        # Question 3: Name with highest value in category 'B' - Jane with value 20, then Alice with value 40, so Alice is highest
+        highest_in_b = df[df['category'] == 'B'].loc[df[df['category'] == 'B']['value'].idxmax()]['name']
+
+        # Check for various possible correct answers based on different questions
+        if (submitted_answer == avg_value or
+            (isinstance(submitted_answer, (int, float)) and abs(submitted_answer - avg_value) < 0.01)):
+            # Correct answer for question 1
+            logger.info(f"Correct answer for Q1 submitted: {submitted_answer}")
             response = {
                 "correct": True,
-                "reason": "Great job! That's the correct average.",
+                "reason": "Great job! That's the correct average of the value column.",
+                "url": None  # No next quiz in demo
+            }
+        elif (submitted_answer == sum_category_a or
+              (isinstance(submitted_answer, (int, float)) and abs(submitted_answer - sum_category_a) < 0.01)):
+            # Correct answer for question 2
+            logger.info(f"Correct answer for Q2 submitted: {submitted_answer}")
+            response = {
+                "correct": True,
+                "reason": "Great job! That's the correct sum of values in category A.",
+                "url": None  # No next quiz in demo
+            }
+        elif (submitted_answer == highest_in_b or
+              (isinstance(submitted_answer, str) and submitted_answer.lower() == highest_in_b.lower())):
+            # Correct answer for question 3
+            logger.info(f"Correct answer for Q3 submitted: {submitted_answer}")
+            response = {
+                "correct": True,
+                "reason": f"Great job! {highest_in_b} has the highest value in category B.",
                 "url": None  # No next quiz in demo
             }
         else:
             # Incorrect answer
-            logger.info(f"Incorrect answer submitted: {submitted_answer}, expected: {correct_answer}")
+            logger.info(f"Incorrect answer submitted: {submitted_answer}. Possible correct answers: {avg_value}, {sum_category_a}, {highest_in_b}")
             response = {
                 "correct": False,
-                "reason": f"Incorrect answer. Expected {correct_answer}, got {submitted_answer}"
+                "reason": f"Incorrect answer. Possible answers: average={avg_value}, sum of A={sum_category_a}, highest in B={highest_in_b}"
             }
 
         logger.info(f"Returning submission result: {response}")
