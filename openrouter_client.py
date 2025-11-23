@@ -50,7 +50,7 @@ async def call_llm(system_prompt: str, user_prompt: str, *, temperature: float =
             if "choices" in data and len(data["choices"]) > 0:
                 response_content = data["choices"][0]["message"]["content"]
                 logger.info(f"Received response from LLM, content length: {len(response_content)}")
-                logger.debug(f"Response preview: {response_content[:100]}...")
+                logger.debug(f"Full LLM response: {response_content}")
 
                 return response_content
             else:

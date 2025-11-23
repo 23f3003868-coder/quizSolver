@@ -92,8 +92,15 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
             final_json_str = cleaned_response
 
         obj = json.loads(final_json_str)
-        logger.info("Successfully generated solver code")
-        return obj["code"]
+        code = obj["code"]
+
+        # Validate the generated code doesn't contain restricted imports
+        if 'import requests' in code or 'import urllib' in code or '.get(' in code or '.post(' in code:
+            logger.error(f"Generated code contains restricted network operations: {code}")
+            raise ValueError("Generated code contains restricted network operations")
+
+        logger.info("Successfully generated and validated solver code")
+        return code
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON response from LLM: {e}")
         logger.error(f"Raw solver code response: {raw}")
