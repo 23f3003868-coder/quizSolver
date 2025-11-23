@@ -23,19 +23,25 @@ You are a Python data analysis assistant.
 You will be given:
 - A description of the question
 - The full text of the quiz page
+- A description of any loaded data files (if available)
 
 You must output ONLY a JSON object:
 
 {
   "explanation": "short natural language explanation of what you will do",
-  "code": "def solve(page_url):\\n    ...\\n    return answer"
+  "code": "def solve(data, page_url):\\n    ...\\n    return answer"
 }
 
 Rules:
-- The function `solve(page_url)` receives the original quiz page URL to help with relative link resolution.
-- You can import and use pandas, httpx, numpy, and other standard libraries as needed.
-- You can make HTTP requests to download data files as needed.
-- Use pandas.read_csv(), httpx.get() (preferred) or requests.get() to download and process data.
+- The function `solve(data, page_url)` receives:
+  - data: dict from URL string to python object (if any files were pre-downloaded):
+    * CSV/Excel → pandas.DataFrame
+    * PDF → dict with 'texts' (list[str]) and 'tables' (nested lists)
+  - page_url: the original quiz page URL to help with relative link resolution if needed.
+- Use the pre-loaded data when available; data keys are the URLs where files were downloaded from.
+- You can also import and use pandas, httpx, numpy, and other standard libraries as needed.
+- You may make additional HTTP requests to download data files if the pre-loaded data is insufficient.
+- Use pandas.read_csv(), httpx.get() (preferred) or requests.get() for additional downloads.
 - Do not print or use any input/output functions like print(), input().
 - Return the final `answer` in a type consistent with the question (number/string/boolean/json-serializable).
 - Code MUST be valid Python 3.
@@ -129,9 +135,9 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     return result
 
 
-def run_solver_code(code: str, original_url: str) -> Any:
+def run_solver_code(code: str, data: Dict[str, Any], original_url: str) -> Any:
     """
-    Execute the LLM-generated code defining solve(page_url)
+    Execute the LLM-generated code defining solve(data, page_url)
     and return the answer.
     """
     logger.info("Executing solver code")
@@ -156,11 +162,11 @@ def run_solver_code(code: str, original_url: str) -> Any:
         exec(code, global_env, local_env)
         solve_fn = local_env.get("solve")
         if not isinstance(solve_fn, types.FunctionType):
-            logger.error("No solve(page_url) function found in generated code")
-            raise RuntimeError("No solve(page_url) function found")
+            logger.error("No solve(data, page_url) function found in generated code")
+            raise RuntimeError("No solve(data, page_url) function found")
 
-        logger.info("Calling solve function with page URL")
-        result = solve_fn(original_url)
+        logger.info("Calling solve function with data and page URL")
+        result = solve_fn(data, original_url)
         logger.info(f"Solver function returned result: {result}")
         return result
     except Exception as e:
@@ -225,7 +231,7 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     try:
         solver_code = await make_solver_code(plan.get("question_summary", ""), page_text, data_descr)
         logger.info("Running solver code")
-        answer = run_solver_code(solver_code, url)  # Pass the original URL instead of data and page_text
+        answer = run_solver_code(solver_code, data, url)  # Pass both data and URL
         logger.info(f"Successfully computed answer: {answer}")
     except Exception as e:
         logger.error(f"Error generating or running solver code: {e}")
