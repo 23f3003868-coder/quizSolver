@@ -23,25 +23,24 @@ You are a Python data analysis assistant.
 You will be given:
 - A description of the question
 - The full text of the quiz page
-- A description of any loaded data files (if available)
+- A description of loaded data files
 
 You must output ONLY a JSON object:
 
 {
   "explanation": "short natural language explanation of what you will do",
-  "code": "def solve(data, page_url):\\n    ...\\n    return answer"
+  "code": "def solve(data, page_text):\\n    ...\\n    return answer"
 }
 
 Rules:
-- The function `solve(data, page_url)` receives:
-  - data: dict from URL string to python object (if any files were pre-downloaded):
+- The function `solve(data, page_text)` receives:
+  - data: dict from URL string to python object:
     * CSV/Excel → pandas.DataFrame
-    * PDF → dict with 'texts' (list[str]) and 'tables' (nested lists)
-  - page_url: the original quiz page URL to help with relative link resolution if needed.
-- Use the pre-loaded data when available; data keys are the URLs where files were downloaded from.
-- You can also import and use pandas, httpx, numpy, and other standard libraries as needed.
-- You may make additional HTTP requests to download data files if the pre-loaded data is insufficient.
-- Use pandas.read_csv(), httpx.get() (preferred) or requests.get() for additional downloads.
+    * PDF      → dict with 'texts' (list[str]) and 'tables' (nested lists)
+  - page_text: full text of the quiz page.
+- Use only numpy and pandas operations; they are already imported as `import numpy as np` and `import pandas as pd`.
+- Do not import or use requests, urllib, or any network modules; data is already loaded.
+- No external network calls.
 - Do not print or use any input/output functions like print(), input().
 - Return the final `answer` in a type consistent with the question (number/string/boolean/json-serializable).
 - Code MUST be valid Python 3.
@@ -95,7 +94,12 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         obj = json.loads(final_json_str)
         code = obj["code"]
 
-        logger.info("Successfully generated solver code")
+        # Validate the generated code doesn't contain restricted imports
+        if 'import requests' in code or 'import urllib' in code or '.get(' in code or '.post(' in code:
+            logger.error(f"Generated code contains restricted network operations: {code}")
+            raise ValueError("Generated code contains restricted network operations")
+
+        logger.info("Successfully generated and validated solver code")
         return code
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON response from LLM: {e}")
@@ -135,38 +139,30 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     return result
 
 
-def run_solver_code(code: str, data: Dict[str, Any], original_url: str) -> Any:
+def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
     """
-    Execute the LLM-generated code defining solve(data, page_url)
+    Execute the LLM-generated code defining solve(data, page_text)
     and return the answer.
     """
     logger.info("Executing solver code")
     logger.debug(f"Code to execute: {code[:200]}...")
 
-    # Extended globals to allow network operations
+    # Restricted globals - only allow safe operations, no network access
     global_env = {
         "__builtins__": __builtins__,
         "pd": pd,
         "np": np,
-        # Allow network and data processing libraries that are needed
-        "httpx": __import__("httpx"),
-        "requests": __import__("requests"),
-        "urllib": __import__("urllib", fromlist=['']),
-        "urllib.request": __import__("urllib.request", fromlist=['']),
-        "io": __import__("io"),
-        "csv": __import__("csv"),
-        "json": __import__("json"),
     }
     local_env: dict = {}
     try:
         exec(code, global_env, local_env)
         solve_fn = local_env.get("solve")
         if not isinstance(solve_fn, types.FunctionType):
-            logger.error("No solve(data, page_url) function found in generated code")
-            raise RuntimeError("No solve(data, page_url) function found")
+            logger.error("No solve(data, page_text) function found in generated code")
+            raise RuntimeError("No solve(data, page_text) function found")
 
-        logger.info("Calling solve function with data and page URL")
-        result = solve_fn(data, original_url)
+        logger.info("Calling solve function with provided data")
+        result = solve_fn(data, page_text)
         logger.info(f"Solver function returned result: {result}")
         return result
     except Exception as e:
@@ -231,7 +227,7 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     try:
         solver_code = await make_solver_code(plan.get("question_summary", ""), page_text, data_descr)
         logger.info("Running solver code")
-        answer = run_solver_code(solver_code, data, url)  # Pass both data and URL
+        answer = run_solver_code(solver_code, data, page_text)  # Pass data and page_text
         logger.info(f"Successfully computed answer: {answer}")
     except Exception as e:
         logger.error(f"Error generating or running solver code: {e}")
