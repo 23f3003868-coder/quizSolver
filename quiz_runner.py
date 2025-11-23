@@ -216,18 +216,19 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     logger.info("Fetching quiz page")
     try:
         html, page_text = await fetch_quiz_page(url)
-        logger.info(f"Successfully fetched quiz page, text length: {len(page_text)}")
+        logger.info(f"Successfully fetched quiz page, HTML length: {len(html)}, text length: {len(page_text)}")
     except Exception as e:
         logger.error(f"Error fetching quiz page: {e}")
         raise
 
     # Plan the solution
-    logger.info("Planning solution from page text")
+    logger.info("Planning solution from page HTML and text")
     try:
-        plan = await plan_from_page_text(page_text, url)
+        # Use the full HTML content to help identify links and data files, but pass both HTML and text
+        plan = await plan_from_page_text(html, url)
         logger.info(f"Successfully created plan: {plan.get('question_summary', 'N/A')[:50]}...")
     except Exception as e:
-        logger.error(f"Error planning from page text: {e}")
+        logger.error(f"Error planning from page content: {e}")
         raise
 
     submit_url = plan.get("submit_url")
