@@ -337,7 +337,10 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
         logger.info(f"Successfully computed answer: {answer}")
     except Exception as e:
         logger.error(f"Error generating or running solver code: {e}")
-        raise
+        # On any error in solving, submit a placeholder answer to continue the quiz chain
+        logger.info("Submitting placeholder answer due to error, to continue quiz chain")
+        answer = "PLACEHOLDER_ERROR_SKIP"
+        logger.info(f"Using placeholder answer: {answer}")
 
     # Cast answer if needed
     if answer_type == "number":
