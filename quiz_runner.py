@@ -287,9 +287,38 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(submit_url, json=payload)
-            result = resp.json()
-            logger.info(f"Received submission result: {result}")
-            return result
+
+            # Handle different response types
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                # If response is JSON, parse it
+                result = resp.json()
+                logger.info(f"Received JSON submission result: {result}")
+                return result
+            elif resp.status_code == 405:
+                # Handle Method Not Allowed - may need to adjust submission method or URL
+                logger.error(f"405 Method Not Allowed when submitting to {submit_url}")
+                logger.error(f"Response content: {resp.text}")
+                # Try to construct a reasonable result based on status code
+                return {
+                    "correct": False,
+                    "reason": f"Method not allowed when submitting to {submit_url}",
+                    "url": None
+                }
+            else:
+                # For non-JSON responses, try to parse or return basic info
+                try:
+                    # Try to parse as JSON anyway in case it's valid JSON
+                    result = resp.json()
+                    logger.info(f"Received submission result: {result}")
+                    return result
+                except:
+                    # If can't parse JSON, return status info
+                    logger.warning(f"Non-JSON response received: {resp.status_code} - {resp.text}")
+                    return {
+                        "correct": False,
+                        "reason": f"Non-JSON response: {resp.status_code}",
+                        "url": None
+                    }
     except Exception as e:
         logger.error(f"Error submitting answer: {e}")
         raise
