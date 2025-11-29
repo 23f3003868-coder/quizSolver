@@ -98,22 +98,35 @@ Produce JSON with 'explanation' and 'code' fields as specified. Do not include a
         obj = json.loads(final_json_str)
         code = obj["code"]
 
-        # Check if this is an audio/video processing question that we can't handle
+        # Check if this is a media processing question that we can't handle (audio, video, image)
         question_lower = question_summary.lower() if question_summary else ""
         page_text_lower = page_text.lower() if page_text else ""
         data_descr_lower = data_descr.lower() if data_descr else ""
 
-        # If this looks like an audio/video processing question, skip it with a placeholder answer
+        # If this looks like a media processing question, skip it with a placeholder answer
         if ('audio' in question_lower or 'audio' in page_text_lower or 'audio' in data_descr_lower or
             'video' in question_lower or 'video' in page_text_lower or 'video' in data_descr_lower or
+            'image' in question_lower or 'image' in page_text_lower or 'image' in data_descr_lower or
+            'picture' in question_lower or 'picture' in page_text_lower or 'picture' in data_descr_lower or
+            'png' in question_lower or 'png' in page_text_lower or 'png' in data_descr_lower or
+            'jpg' in question_lower or 'jpg' in page_text_lower or 'jpg' in data_descr_lower or
+            'jpeg' in question_lower or 'jpeg' in page_text_lower or 'jpeg' in data_descr_lower or
+            'gif' in question_lower or 'gif' in page_text_lower or 'gif' in data_descr_lower or
+            'bmp' in question_lower or 'bmp' in page_text_lower or 'bmp' in data_descr_lower or
+            'svg' in question_lower or 'svg' in page_text_lower or 'svg' in data_descr_lower or
             'speech' in question_lower or 'speech' in page_text_lower or
             'transcribe' in question_lower or 'transcribe' in page_text_lower or
             'listen' in question_lower or 'listen' in page_text_lower or
-            'sound' in question_lower or 'sound' in page_text_lower):
+            'sound' in question_lower or 'sound' in page_text_lower or
+            'color' in question_lower or 'color' in page_text_lower or 'color' in data_descr_lower or
+            'rgb' in question_lower or 'rgb' in page_text_lower or 'rgb' in data_descr_lower or
+            'hex' in question_lower or 'hex' in page_text_lower or 'hex' in data_descr_lower or
+            'pixel' in question_lower or 'pixel' in page_text_lower or 'pixel' in data_descr_lower or
+            'heatmap' in question_lower or 'heatmap' in page_text_lower or 'heatmap' in data_descr_lower):
 
-            logger.info(f"Detected audio/video/speech processing question, generating placeholder answer instead: {question_summary[:50]}...")
+            logger.info(f"Detected media processing question, generating placeholder answer instead: {question_summary[:50]}...")
             # Return a simple placeholder function that returns a generic answer
-            placeholder_code = 'def solve(data, page_text):\n    return "PLACEHOLDER_ANSWER_AUDIO_SKIP"'
+            placeholder_code = 'def solve(data, page_text):\n    return "PLACEHOLDER_ANSWER_MEDIA_SKIP"'
             return placeholder_code
 
         # Validate the generated code doesn't contain restricted imports
