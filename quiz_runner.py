@@ -245,6 +245,27 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     answer_type = plan.get("answer_type")
     answer_json_template = plan.get("answer_json_template", {})
 
+    # Special handling: if the submit URL looks like a quiz page URL rather than a submission endpoint,
+    # try using a default submission endpoint instead. Quiz pages typically don't accept POST requests directly.
+    original_submit_url = submit_url
+    quiz_domains = ['tds-llm-analysis.s-anand.net']  # Add domains that have this pattern
+    if (submit_url and
+        any(domain in submit_url for domain in quiz_domains) and
+        not any(endpoint in submit_url for endpoint in ['/submit', '/api/', '/endpoint'])):
+        # This looks like a quiz page, not a submission endpoint.
+        # Check if it's a root domain submission case
+        if submit_url == "https://tds-llm-analysis.s-anand.net/project2-uv":
+            # For project2-uv specifically, submission should go to /submit
+            default_submit_url = 'https://tds-llm-analysis.s-anand.net/submit'
+            logger.info(f"Detected project2-uv quiz page as submit URL, using /submit endpoint instead: {default_submit_url}")
+            submit_url = default_submit_url
+        elif '/project2' in submit_url and not submit_url.endswith('/submit'):
+            # If it's a project2 related URL but not submit, try /submit
+            domain = "https://tds-llm-analysis.s-anand.net"
+            default_submit_url = f"{domain}/submit"
+            logger.info(f"Detected project2 quiz page as submit URL, using /submit endpoint instead: {default_submit_url}")
+            submit_url = default_submit_url
+
     logger.info(f"Plan details - Submit URL: {submit_url}, File URLs: {len(file_urls)}, API URLs: {len(api_urls)}, Answer type: {answer_type}")
 
     # Download and load data if needed
@@ -312,11 +333,14 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
 
     # Build payload
     logger.info("Building submission payload")
+
+    # Use the original quiz page URL (not the submission endpoint) for the 'url' field
+    # according to quiz instructions which often say to use the quiz page URL in the payload
     payload = answer_json_template.copy()
     payload.update({
         "email": email,
         "secret": secret,
-        "url": url,
+        "url": url,  # This is the original quiz page URL from the request
         "answer": answer
     })
     logger.info(f"Built payload with keys: {list(payload.keys())}")
