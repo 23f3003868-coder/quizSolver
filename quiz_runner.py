@@ -120,6 +120,7 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     Produce a short text description of the loaded data for the LLM:
     - For DataFrames: show shape and column names.
     - For PDFs: number of pages and number of tables.
+    - For API JSON responses: show keys and basic structure.
     """
     logger.info(f"Describing data structures for {len(data)} data sources")
     lines = []
@@ -132,6 +133,18 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
             num_pages = len(obj["texts"])
             logger.info(f"  {url}: PDF with {num_pages} pages")
             lines.append(f"{url} (key in data dict): PDF with {num_pages} pages")
+        elif isinstance(obj, dict):
+            # This is likely API JSON data - describe its structure
+            keys = list(obj.keys()) if isinstance(obj, dict) and not (obj.get("texts") and obj.get("tables")) else "complex_object"
+            if isinstance(keys, list):
+                logger.info(f"  {url}: JSON API response with keys={keys}")
+                lines.append(f"{url} (key in data dict): JSON API response with keys={keys}")
+            else:
+                logger.info(f"  {url}: JSON API response, type={type(obj)}, sample_keys={list(obj.keys())[:5] if hasattr(obj, 'keys') else 'N/A'}")
+                lines.append(f"{url} (key in data dict): JSON API response, type={type(obj)}, sample_keys={list(obj.keys())[:5] if hasattr(obj, 'keys') else 'N/A'}")
+        elif isinstance(obj, list):
+            logger.info(f"  {url}: JSON API response list with {len(obj)} items")
+            lines.append(f"{url} (key in data dict): JSON API response list with {len(obj)} items")
         else:
             logger.info(f"  {url}: Unrecognized object of type {type(obj)}")
             lines.append(f"{url} (key in data dict): Unrecognized object of type {type(obj)}")
@@ -202,10 +215,11 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
 
     submit_url = plan.get("submit_url")
     file_urls = plan.get("file_urls", [])
+    api_urls = plan.get("api_urls", [])  # New field for authenticated API endpoints
     answer_type = plan.get("answer_type")
     answer_json_template = plan.get("answer_json_template", {})
 
-    logger.info(f"Plan details - Submit URL: {submit_url}, File URLs: {len(file_urls)}, Answer type: {answer_type}")
+    logger.info(f"Plan details - Submit URL: {submit_url}, File URLs: {len(file_urls)}, API URLs: {len(api_urls)}, Answer type: {answer_type}")
 
     # Download and load data if needed
     data = {}
@@ -219,8 +233,21 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
         except Exception as e:
             logger.error(f"Error downloading or loading data: {e}")
             raise
+
+    # Download and load data from authenticated API endpoints if needed
+    if api_urls:
+        logger.info(f"Fetching data from {len(api_urls)} authenticated API endpoints")
+        try:
+            from data_utils import fetch_api_data
+            api_data = await fetch_api_data(api_urls, email, secret, url)
+            logger.info(f"Successfully fetched API data: {list(api_data.keys())}")
+            # Merge API data with file data using URL as key
+            data.update(api_data)
+        except Exception as e:
+            logger.error(f"Error fetching or loading API data: {e}")
+            raise
     else:
-        logger.info("No files to download")
+        logger.info("No API endpoints to fetch data from")
 
     # Generate and run solver code
     data_descr = describe_data_structures(data)

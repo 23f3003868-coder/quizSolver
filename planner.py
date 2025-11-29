@@ -17,6 +17,7 @@ Your job is to output a STRICT JSON object with these fields:
   "submit_url": "https://...",                     // where to POST the final answer
   "answer_type": "number|string|boolean|json|file",
   "file_urls": ["https://...", "..."],             // any CSV, Excel, PDF, data URLs in the page (if any)
+  "api_urls": ["https://...", "..."],              // any API endpoints that require authentication to access data (if any)
   "answer_json_template": {                        // JSON payload structure to send to submit_url,
     "email": "",                                   // from page instructions
     "secret": "",
@@ -28,6 +29,7 @@ Your job is to output a STRICT JSON object with these fields:
 Rules:
 - If you see relative URLs like "/data/file.csv", resolve them to absolute URLs based on the page's URL
 - If the page URL is "https://example.com/quiz" and there's a relative link "/data/file.csv", the absolute URL is "https://example.com/data/file.csv"
+- If the page mentions API endpoints that require authentication (like with email and secret), add them to api_urls
 - If the page shows a JSON payload schema, replicate it in answer_json_template, but leave the answer value as null.
 - Do NOT include comments or extra fields.
 - Output only valid JSON, no explanation text.
