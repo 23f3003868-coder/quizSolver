@@ -57,6 +57,7 @@ def load_dataframes(downloaded: dict[str, str]) -> dict[str, Any]:
     where data is:
       - pandas.DataFrame for CSV/Excel
       - dict with pdf info for PDFs
+      - parsed JSON for JSON files
     """
     logger.info(f"Loading {len(downloaded)} downloaded files into dataframes")
     result: dict[str, Any] = {}
@@ -89,6 +90,13 @@ def load_dataframes(downloaded: dict[str, str]) -> dict[str, Any]:
                         "tables": tables,  # list[page][table][rows]
                     }
                     logger.info(f"Loaded PDF with {len(texts)} pages and {sum(len(t) for t in tables)} total tables")
+            elif path.endswith((".json", ".jsonl")):
+                logger.info(f"Loading JSON file: {url}")
+                with open(path, 'r', encoding='utf-8') as f:
+                    import json
+                    json_data = json.load(f)
+                    result[url] = json_data
+                    logger.info(f"Loaded JSON with type: {type(json_data)}, keys: {list(json_data.keys()) if isinstance(json_data, dict) else 'N/A'}")
             else:
                 logger.warning(f"Unknown file type for {url}, keeping raw path: {path}")
                 # Unknown type, keep raw path

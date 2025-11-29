@@ -155,6 +155,7 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     - For DataFrames: show shape and column names.
     - For PDFs: number of pages and number of tables.
     - For API JSON responses: show keys and basic structure.
+    - For loaded JSON files: show keys and basic structure.
     """
     logger.info(f"Describing data structures for {len(data)} data sources")
     lines = []
@@ -172,17 +173,24 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
             logger.info(f"  {url}: PDF with {num_pages} pages")
             lines.append(f"{url} (key in data dict): PDF with {num_pages} pages")
         elif isinstance(obj, dict):
-            # This is likely API JSON data - describe its structure
-            keys = list(obj.keys()) if isinstance(obj, dict) and not (obj.get("texts") and obj.get("tables")) else "complex_object"
-            if isinstance(keys, list):
-                logger.info(f"  {url}: JSON API response with keys={keys}")
-                lines.append(f"{url} (key in data dict): JSON API response with keys={keys}")
-            else:
-                logger.info(f"  {url}: JSON API response, type={type(obj)}, sample_keys={list(obj.keys())[:5] if hasattr(obj, 'keys') else 'N/A'}")
-                lines.append(f"{url} (key in data dict): JSON API response, type={type(obj)}, sample_keys={list(obj.keys())[:5] if hasattr(obj, 'keys') else 'N/A'}")
+            # This is likely API JSON data or loaded JSON file - describe its structure
+            if obj.get("texts") and obj.get("tables"):  # This is a PDF object
+                num_pages = len(obj["texts"])
+                logger.info(f"  {url}: PDF with {num_pages} pages")
+                lines.append(f"{url} (key in data dict): PDF with {num_pages} pages")
+            else:  # This is JSON data (from API or file)
+                keys = list(obj.keys())
+                logger.info(f"  {url}: JSON data with keys={keys}")
+                lines.append(f"{url} (key in data dict): JSON data with keys={keys}")
+                # If it has nested structure, add more detail
+                if len(keys) <= 10:  # Only show types for small number of keys
+                    for key in keys:
+                        val = obj[key]
+                        if isinstance(val, (list, dict)):
+                            lines.append(f"  - {key}: {type(val).__name__} with {len(val) if isinstance(val, (list, dict)) else 'N/A'} items")
         elif isinstance(obj, list):
-            logger.info(f"  {url}: JSON API response list with {len(obj)} items")
-            lines.append(f"{url} (key in data dict): JSON API response list with {len(obj)} items")
+            logger.info(f"  {url}: JSON/list data with {len(obj)} items")
+            lines.append(f"{url} (key in data dict): JSON/list data with {len(obj)} items")
         else:
             logger.info(f"  {url}: Unrecognized object of type {type(obj)}")
             lines.append(f"{url} (key in data dict): Unrecognized object of type {type(obj)}")
@@ -456,8 +464,10 @@ async def run_quiz(url: str, email: str, secret: str, deadline: float):
                     # Skip to next
                     current_url = next_url
                 else:
-                    logger.error("Wrong answer with no next URL, stopping quiz chain")
-                    # Stop on wrong answer with no new URL
+                    logger.warning("Wrong answer with no next URL, but continuing quiz chain anyway")
+                    # Instead of stopping, try to continue - there might be other ways to find next quizzes
+                    # For now, just stop but with a warning rather than error
+                    logger.info("Stopping quiz chain as no next URL provided for wrong answer")
                     break
         except Exception as e:
             # Log error and break
