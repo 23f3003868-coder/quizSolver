@@ -37,7 +37,10 @@ Rules:
   - data: dict from URL string to python object:
     * CSV/Excel → pandas.DataFrame
     * PDF      → dict with 'texts' (list[str]) and 'tables' (nested lists)
+    * For API responses: the JSON response directly
+    * Additional context may be available in data['email'], data['secret'], data['current_url'] if needed
   - page_text: full text of the quiz page.
+- If the quiz requires authentication credentials or specific URLs, check data dictionary for 'email', 'secret', 'current_url' keys
 - Use only numpy and pandas operations; they are already imported as `import numpy as np` and `import pandas as pd`.
 - Do not import or use requests, urllib, or any network modules; data is already loaded.
 - No external network calls.
@@ -125,7 +128,11 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     logger.info(f"Describing data structures for {len(data)} data sources")
     lines = []
     for url, obj in data.items():
-        if hasattr(obj, "head"):  # assume DataFrame-like
+        if url in ['email', 'secret', 'current_url']:
+            # Handle special authentication context keys
+            logger.info(f"  {url}: Authentication context (available for use in code)")
+            lines.append(f"{url}: Authentication credential/context information available for use in solver code")
+        elif hasattr(obj, "head"):  # assume DataFrame-like
             cols = list(obj.columns)
             logger.info(f"  {url}: DataFrame shape={obj.shape}, columns={cols}")
             lines.append(f"{url} (key in data dict): DataFrame shape={obj.shape}, columns={cols}")
@@ -153,13 +160,20 @@ def describe_data_structures(data: Dict[str, Any]) -> str:
     return result
 
 
-def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
+def run_solver_code(code: str, context_data: Dict[str, Any]) -> Any:
     """
     Execute the LLM-generated code defining solve(data, page_text)
     and return the answer.
     """
     logger.info("Executing solver code")
     logger.debug(f"Code to execute: {code[:200]}...")
+
+    # Extract the original data and context
+    quiz_data = context_data.get("quiz_data", {})
+    page_text = context_data.get("page_text", "")
+    email = context_data.get("email", "")
+    secret = context_data.get("secret", "")
+    current_url = context_data.get("current_url", "")
 
     # Restricted globals - only allow safe operations, no network access
     global_env = {
@@ -176,7 +190,19 @@ def run_solver_code(code: str, data: Dict[str, Any], page_text: str) -> Any:
             raise RuntimeError("No solve(data, page_text) function found")
 
         logger.info("Calling solve function with provided data")
-        result = solve_fn(data, page_text)
+        # Pass the quiz data and page text to the original function signature
+        # If the code expects the new context, we need to handle it differently
+        # First try the original signature
+        try:
+            result = solve_fn(quiz_data, page_text)
+        except TypeError:
+            # If that fails, try with the full context (in case LLM used more advanced approach)
+            try:
+                result = solve_fn(quiz_data, page_text, email, secret, current_url)
+            except TypeError:
+                # If that also fails, try with a context dict
+                result = solve_fn(context_data)
+
         logger.info(f"Solver function returned result: {result}")
         return result
     except Exception as e:
@@ -249,13 +275,26 @@ async def solve_single_quiz(url: str, email: str, secret: str, deadline: float) 
     else:
         logger.info("No API endpoints to fetch data from")
 
+    # Add auth context to data so LLM can access it if needed
+    data['email'] = email
+    data['secret'] = secret
+    data['current_url'] = url
+
     # Generate and run solver code
     data_descr = describe_data_structures(data)
     logger.info("Generating solver code")
     try:
         solver_code = await make_solver_code(plan.get("question_summary", ""), page_text, data_descr)
         logger.info("Running solver code")
-        answer = run_solver_code(solver_code, data, page_text)  # Pass data and page_text
+        # Pass additional context data to the solver code
+        context_data = {
+            "quiz_data": data,
+            "page_text": page_text,
+            "email": email,
+            "secret": secret,
+            "current_url": url
+        }
+        answer = run_solver_code(solver_code, context_data)  # Pass enriched context data
         logger.info(f"Successfully computed answer: {answer}")
     except Exception as e:
         logger.error(f"Error generating or running solver code: {e}")
