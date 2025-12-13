@@ -9,9 +9,5 @@ services:
     startCommand: |
       python -m playwright install chromium && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: QUIZ_SECRET
-        sync: false
-      - key: QUIZ_EMAIL
-        sync: false
-      - key: OPENROUTER_API_KEY
+      - key: GOOGLE_API_KEY
         sync: false
