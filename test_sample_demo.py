@@ -12,6 +12,7 @@ async def test_quiz_solver_with_sample_demo():
     
     # Define the service URL
     service_url = "https://quizsolver-0cy6.onrender.com"
+    endpoint = f"{service_url}/solve"
     
     # Define the payload for the sample demo quiz (from assignment.txt)
     payload = {
@@ -20,12 +21,12 @@ async def test_quiz_solver_with_sample_demo():
         "url": "https://tds-llm-analysis.s-anand.net/demo"  # Sample demo from assignment
     }
     
-    print(f"Sending request to: {service_url}")
+    print(f"Sending request to: {endpoint}")
     print(f"With payload: {json.dumps(payload, indent=2)}")
     
     async with httpx.AsyncClient(timeout=60) as client:
         try:
-            response = await client.post(service_url, json=payload)
+            response = await client.post(endpoint, json=payload)
             print(f"\nResponse status: {response.status_code}")
             print(f"Response headers: {dict(response.headers)}")
             print(f"Response body: {response.text}")

@@ -32,6 +32,7 @@ async def test_server():
     await asyncio.sleep(5)
     
     service_url = "http://localhost:8000"
+    endpoint = f"{service_url}/solve"
     payload = {
         "email": "23f3003868@ds.study.iitm.ac.in",
         "secret": "495669",
@@ -40,9 +41,9 @@ async def test_server():
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            print(f"\nSending POST request to {service_url}")
+            print(f"\nSending POST request to {endpoint}")
             print(f"Payload: {json.dumps(payload, indent=2)}")
-            response = await client.post(service_url, json=payload)
+            response = await client.post(endpoint, json=payload)
             print(f"\nResponse status: {response.status_code}")
             print(f"Response: {response.text}")
             

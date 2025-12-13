@@ -20,13 +20,16 @@ async def test_quiz_solver():
         "url": "https://tds-llm-analysis.s-anand.net/demo"  # This is the actual demo from the assignment
     }
     
-    print(f"Sending request to: {service_url}")
+    # Updated endpoint is /solve (not /)
+    endpoint = f"{service_url}/solve"
+    
+    print(f"Sending request to: {endpoint}")
     print(f"With payload: {json.dumps(payload, indent=2)}")
     
     async with httpx.AsyncClient(timeout=120) as client:  # Increased timeout to 2 minutes
         try:
             print("Making request...")
-            response = await client.post(service_url, json=payload)
+            response = await client.post(endpoint, json=payload)
             print(f"\nResponse status: {response.status_code}")
             print(f"Response body: {response.text}")
 

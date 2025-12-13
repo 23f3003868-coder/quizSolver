@@ -4,7 +4,7 @@ import json
 
 async def test_quiz():
     # Send request to your Render service which will solve the quiz
-    url = "https://quizsolver-0cy6.onrender.com/"
+    url = "https://quizsolver-0cy6.onrender.com/solve"
 
     # Using the provided credentials - the URL in the payload is the quiz to solve
     payload = {
