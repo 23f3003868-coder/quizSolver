@@ -6,7 +6,7 @@ from typing import Dict
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
-from starlette.responses import Response
+from fastapi.staticfiles import StaticFiles
 
 from settings import validate_settings
 from agent import run_quiz_chain
