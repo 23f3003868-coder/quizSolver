@@ -32,12 +32,19 @@ pip install -r requirements.txt
 python -m playwright install --with-deps chromium
 ```
 
-2. Set environment variables:
+2. Get a Gemini API Key:
+   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Sign in with your Google account
+   - Click "Get API Key" or "Create API Key"
+   - Copy your API key (starts with `AIza...`)
+   - See `GEMINI_API_KEY_SETUP.md` for detailed instructions
+
+3. Set environment variables:
 ```bash
 export GOOGLE_API_KEY="your_gemini_api_key"
 ```
 
-3. Run the server:
+4. Run the server:
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # Configure Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
 
-async def call_gemini(system_prompt: str, user_prompt: str, *, temperature: float = 0.0, model: str = "gemini-pro") -> str:
+async def call_gemini(system_prompt: str, user_prompt: str, *, temperature: float = 0.0, model: str = "gemini-1.5-flash") -> str:
     """
     Call Google Gemini API with system and user prompts.
     
@@ -17,7 +17,8 @@ async def call_gemini(system_prompt: str, user_prompt: str, *, temperature: floa
         system_prompt: System instruction prompt
         user_prompt: User query prompt
         temperature: Sampling temperature (default 0.0 for deterministic)
-        model: Model name (default "gemini-pro")
+        model: Model name (default "gemini-1.5-flash" - fast and efficient)
+               Other options: "gemini-1.5-pro" (more capable but slower)
         
     Returns:
         Response text from Gemini
